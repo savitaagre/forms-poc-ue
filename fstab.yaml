@@ -1,0 +1,5 @@
+mountpoints:
+  /:
+  url: https://author-p233852-e2376453.adobeaemcloud.com/bin/franklin.delivery/savitaagre/forms-poc-ue/main
+  type: "markup"
+  suffix: ".html"
