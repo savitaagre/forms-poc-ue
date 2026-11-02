@@ -1,9 +1,9 @@
 {
   "mappings": [
-    "/:/"
+    "/content/forms-poc-ue/:/"
   ],
   "includes": [
-    "/content/",
+    "/content/forms-poc-ue/",
     "/content/dam/"
   ]
 }
