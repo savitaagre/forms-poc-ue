@@ -1,21 +1,28 @@
 :root {
     --background-color-primary: #fff;
-    --label-color: #666;
-    --border-color: #818a91;
-    --form-error-color: #ff5f3f;
-    --button-primary-color: #5F8DDA;
-    --button-secondary-color: #666;
-    --button-primary-hover-color: #035fe6;
+    --label-color: #374151;
+    --border-color: #d1d5db;
+    --form-error-color: #dc2626;
+    --button-primary-color: #2563eb;
+    --button-secondary-color: #4b5563;
+    --button-primary-hover-color: #1d4ed8;
+    --form-input-text-color: #111827;
+    --form-placeholder-color: #9ca3af;
+    --form-input-hover-border-color: #9ca3af;
+    --form-input-radius: 8px;
+    --form-input-height: 48px;
+    --form-focus-ring: 0 0 0 3px rgb(37 99 235 / 20%);
+    --form-card-max-width: 760px;
     --form-font-size-m: 22px;
     --form-font-size-s: 18px;
     --form-font-size-xs: 16px;
     --form-background-color: var(--background-color-primary);
     --form-padding: 0 10px;
     --form-columns: 12;
-    --form-field-horz-gap: 40px;
+    --form-field-horz-gap: 24px;
     --form-field-vert-gap: 20px;
-    --form-invalid-border-color: #ff5f3f;
-    --form-input-padding: 0.75rem 0.6rem;
+    --form-invalid-border-color: var(--form-error-color);
+    --form-input-padding: 0.75rem 1rem;
     --form-input-font-size: 1rem;
     --form-input-disable-color: #ebebe4;
     --form-input-border-size: 1px;
@@ -26,8 +33,8 @@
     --form-paragraph-font-style: none;
     --form-paragraph-font-size: var(--form-font-size-s);
     --form-label-color: var(--label-color);
-    --form-label-font-size: var(--form-font-size-s);
-    --form-label-font-weight: 400;
+    --form-label-font-size: 0.9375rem;
+    --form-label-font-weight: 600;
     --form-title-font-weight: 600;
     --form-fieldset-border: 0;
     --form-fieldset-marign: 0;
@@ -38,15 +45,15 @@
     --form-fieldset-legend-border: none;
     --form-fieldset-legend-padding: 0;
     --form-button-color: var(--background-color-primary);
-    --form-button-font-size: var(--form-font-size-s);
+    --form-button-font-size: 1rem;
     --form-button-background-color: var(--button-primary-color);
     --form-button-background-hover-color: var(--button-primary-hover-color);
-    --form-button-border: 2px solid transparent;
-    --form-button-padding:15px 50px;
+    --form-button-border: 1px solid transparent;
+    --form-button-padding: 14px 32px;
     --form-upload-color: var(--form-label-color);
     --form-upload-font-size: var(--form-font-size-xs);
     --form-upload-background-color: var(--background-color-primary);
-    --form-submit-width: 100%;
+    --form-submit-width: auto;
     --form-width: 100%;
     --form-field-gap: 5px;
     
@@ -118,7 +125,9 @@ main .form .field-description {
 
 main .form form .field-invalid .field-description {
     color: var(--form-error-color);
-    font-weight: 700;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-top: 0.375rem;
 }
 
 
@@ -154,18 +163,49 @@ main .form select {
     background-color: var(--form-input-background-color);
     border: var(--form-input-border-size) solid var(--form-input-border-color);
     width: 100%;
-    height: 42px;
-    color: var(--form-label-color);
+    height: var(--form-input-height);
+    color: var(--form-input-text-color);
     padding: var(--form-input-padding);
     font-size: var(--form-input-font-size);
+    font-family: inherit;
     max-width: unset;
-    margin-top: .5rem;
-    margin-bottom: 1rem;
-    border-radius: 0.25rem;
+    margin-top: 0.375rem;
+    margin-bottom: 0;
+    border-radius: var(--form-input-radius);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
-main .form input:hover, main .form select:hover {
-    border-color: rgb(90 92 96);
+main .form input::placeholder,
+main .form textarea::placeholder {
+    color: var(--form-placeholder-color);
+}
+
+main .form input:hover,
+main .form textarea:hover,
+main .form select:hover {
+    border-color: var(--form-input-hover-border-color);
+}
+
+main .form input:focus,
+main .form textarea:focus,
+main .form select:focus {
+    border-color: var(--button-primary-color);
+    box-shadow: var(--form-focus-ring);
+    outline: none;
+}
+
+main .form form .field-invalid input,
+main .form form .field-invalid textarea,
+main .form form .field-invalid select {
+    border-color: var(--form-invalid-border-color);
+}
+
+main .form select:not([multiple]) {
+    appearance: none;
+    padding-right: 2.75rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
 }
 
 main .form input:disabled{
@@ -186,8 +226,9 @@ main .form input[type='file'] {
 
 main .form input[type='checkbox'],
 main .form input[type='radio'] {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--button-primary-color);
     flex: none;
     margin: 0;
     position: static;
@@ -195,7 +236,8 @@ main .form input[type='radio'] {
 }
 
 main .form textarea {
-    min-height: 100px;
+    min-height: 140px;
+    resize: vertical;
 }
 
 main .form fieldset:not(.checkbox-group-wrapper, .radio-group-wrapper) legend {
@@ -263,7 +305,13 @@ main .form form fieldset > .checkbox-wrapper {
 
 main .form .radio-wrapper  label,
 main .form .checkbox-wrapper label {
-    flex-basis: calc(100% - 24px);
+    flex-basis: calc(100% - 26px);
+    font-weight: 400;
+}
+
+main .form form > .checkbox-wrapper,
+main .form form > .radio-wrapper {
+    margin: var(--form-field-gap);
 }
 
 main .form fieldset.link .checkbox-wrapper label {
@@ -407,8 +455,16 @@ main .form button {
     border: var(--form-button-border);
     padding: var(--form-button-padding);
     font-size: var(--form-button-font-size);
-    border-radius: unset;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: var(--form-input-radius);
     width: 100%;
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+}
+
+main .form button:focus-visible {
+    outline: none;
+    box-shadow: var(--form-focus-ring);
 }
 
 main form .file-wrapper > button{
@@ -515,9 +571,18 @@ main .form .button-wrapper button {
 }
 
 main .form .button-wrapper button:hover {
-    border: 3px solid #fff;
-    color: #fff;
-    background-color: var(--button-secondary-color);
+    background-color: var(--form-button-background-hover-color);
+}
+
+main .form .reset-wrapper button {
+    color: var(--form-label-color);
+    background-color: var(--background-color-primary);
+    border-color: var(--border-color);
+}
+
+main .form .reset-wrapper button:hover {
+    background-color: #f3f4f6;
+    border-color: var(--form-input-hover-border-color);
 }
 
 main .form .button-wrapper button[disabled] {
@@ -533,6 +598,10 @@ main .form .button-wrapper button[disabled]:hover {
 @media (width >= 600px) {
     main .form button {
         width: unset;
+    }
+
+    main .form .button-wrapper button {
+        width: 100%;
     }
 }
 
@@ -568,21 +637,23 @@ main .form form .repeat-wrapper{
 }
 
 main .form .form-message.success-message {
-    color: #0f5132;
-    background-color: #d1e7dd;
-    border-color: #badbcc;
+    color: #065f46;
+    background-color: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: var(--form-input-radius);
     flex: 100%;
     grid-column: span 12;
-    padding: 10px;
+    padding: 16px;
 }
 
 main .form .form-message.error-message {
-    color: #842029;
-    background-color: #f8d7da;
-    border-color: #f5c2c7;
+    color: #991b1b;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--form-input-radius);
     flex: 100%;
     grid-column: span 12;
-    padding: 10px;
+    padding: 16px;
 }
 
 main .form .file-wrapper .file-drag-area {
@@ -673,15 +744,32 @@ main .form form .checkbox-group-wrapper.horizontal .field-description {
 
 main div.form-wrapper {
     background: white;
+    max-width: var(--form-card-max-width);
+    margin: 0 auto;
     padding: 40px;
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgb(0 0 0 / 8%);
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgb(17 24 39 / 6%);
+}
+
+main .form-container > .default-content-wrapper {
+    max-width: var(--form-card-max-width);
+    margin: 0 auto 24px;
 }
 
 /* Responsive adjustments for mobile */
 @media (width <= 599px) {
     :root {
         --form-field-horz-gap: 10px;
+    }
+
+    main div.form-wrapper {
+        padding: 24px 20px;
+    }
+
+    /* stack side-by-side fields on small screens */
+    main .form form .field-wrapper[class*="col-"] {
+        grid-column: span 12;
     }
 }
 
