@@ -5,6 +5,7 @@ import { checkValidation } from '../form/util.js';
 
 const DEFAULT_THANK_YOU = 'Thank you! We\'ll get back to you within 2 business days.';
 const NOT_CONNECTED_MSG = 'This form is not connected yet. Please try again later.';
+const MAILTO_MSG = 'Your email app should now open with your message. Please press Send there to contact us.';
 
 function field(id, fieldType, label, extra = {}) {
   return {
@@ -63,7 +64,7 @@ function readConfig(block) {
     config[prop] = (prop === 'submitUrl' && link ? link.href : cell.textContent).trim();
   });
   // a single filled row may be the thank-you message when the URL is empty
-  if (rows.length === 1 && config.submitUrl && !/^https?:\/\//i.test(config.submitUrl)) {
+  if (rows.length === 1 && config.submitUrl && !/^(https?:\/\/|mailto:)/i.test(config.submitUrl)) {
     config.thankYouMessage = config.submitUrl;
     config.submitUrl = '';
   }
@@ -80,7 +81,41 @@ function toPayload(form) {
       data[el.name] = el.value;
     }
   });
-  return { data };
+  // flat field map: what email form services and most APIs expect
+  return data;
+}
+
+/**
+ * Builds a mailto: link with the visitor's answers, using field labels and
+ * the selected option text, so it reads well in the recipient's inbox.
+ */
+function toMailtoUrl(form, mailto) {
+  const [address] = mailto.replace(/^mailto:/i, '').split('?');
+  const lines = [];
+  let topic = '';
+  CONTACT_FIELDS.filter((fd) => fd.fieldType !== 'button').forEach((fd) => {
+    const el = form.elements[fd.name];
+    if (!el) return;
+    let value = el.value || '';
+    if (el.tagName === 'SELECT') value = el.selectedOptions[0]?.value ? el.selectedOptions[0].text : '';
+    if (el.type === 'checkbox') value = el.checked ? 'Yes' : 'No';
+    if (fd.name === 'subject') topic = value;
+    lines.push(fd.name === 'message' ? `\n${fd.label.value}:\n${value}` : `${fd.label.value}: ${value}`);
+  });
+  const subject = topic ? `Contact form: ${topic}` : 'Contact form';
+  return `mailto:${address}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
+}
+
+function showMailtoMessage(form) {
+  let note = form.parentNode.querySelector('.form-message.success-message');
+  if (!note) {
+    note = document.createElement('div');
+    note.className = 'form-message success-message';
+    form.parentNode.insertBefore(note, form);
+  }
+  note.textContent = MAILTO_MSG;
+  form.setAttribute('data-submitting', 'false');
+  form.querySelector('button[type="submit"]').disabled = false;
 }
 
 async function onSubmit(e, form, { submitUrl, thankYouMessage }) {
@@ -95,10 +130,17 @@ async function onSubmit(e, form, { submitUrl, thankYouMessage }) {
     form.querySelector('.form-message.error-message').textContent = NOT_CONNECTED_MSG;
     return;
   }
+  if (/^mailto:/i.test(submitUrl)) {
+    // keep the answers in the form in case no email app opens
+    form.querySelector('.form-message.error-message')?.remove();
+    window.open(toMailtoUrl(form, submitUrl), '_self');
+    showMailtoMessage(form);
+    return;
+  }
   try {
     const resp = await fetch(submitUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(toPayload(form)),
     });
     if (!resp.ok) throw new Error(`Submit failed: ${resp.status}`);
