@@ -52,7 +52,8 @@
         "columns",
         "fragment",
         "form",
-        "embed-adaptive-form"
+        "embed-adaptive-form",
+        "contact-form"
       ]
     }
   ]

@@ -180,26 +180,6 @@ main .form textarea::placeholder {
     color: var(--form-placeholder-color);
 }
 
-main .form input:hover,
-main .form textarea:hover,
-main .form select:hover {
-    border-color: var(--form-input-hover-border-color);
-}
-
-main .form input:focus,
-main .form textarea:focus,
-main .form select:focus {
-    border-color: var(--button-primary-color);
-    box-shadow: var(--form-focus-ring);
-    outline: none;
-}
-
-main .form form .field-invalid input,
-main .form form .field-invalid textarea,
-main .form form .field-invalid select {
-    border-color: var(--form-invalid-border-color);
-}
-
 main .form select:not([multiple]) {
     appearance: none;
     padding-right: 2.75rem;
@@ -208,13 +188,15 @@ main .form select:not([multiple]) {
     background-position: right 1rem center;
 }
 
-main .form input:disabled{
-    background-color: var(--form-input-disable-color);
+main .form textarea {
+    min-height: 140px;
+    resize: vertical;
 }
 
-main .form form .radio-wrapper.field-invalid > input,
-main .form form .checkbox-wrapper.field-invalid > input {
-    outline: 1px solid var(--form-error-color);
+main .form input:disabled,
+main .form textarea:disabled,
+main .form select:disabled {
+    background-color: var(--form-input-disable-color);
 }
 
 main .form input[type='file'] {
@@ -235,9 +217,29 @@ main .form input[type='radio'] {
     z-index: 1;
 }
 
-main .form textarea {
-    min-height: 140px;
-    resize: vertical;
+main .form input:hover,
+main .form textarea:hover,
+main .form select:hover {
+    border-color: var(--form-input-hover-border-color);
+}
+
+main .form input:focus,
+main .form textarea:focus,
+main .form select:focus {
+    border-color: var(--button-primary-color);
+    box-shadow: var(--form-focus-ring);
+    outline: none;
+}
+
+main .form form .field-invalid input,
+main .form form .field-invalid textarea,
+main .form form .field-invalid select {
+    border-color: var(--form-invalid-border-color);
+}
+
+main .form form .radio-wrapper.field-invalid > input,
+main .form form .checkbox-wrapper.field-invalid > input {
+    outline: 1px solid var(--form-error-color);
 }
 
 main .form fieldset:not(.checkbox-group-wrapper, .radio-group-wrapper) legend {
@@ -298,6 +300,11 @@ main .form form .checkbox-wrapper, main .form form .radio-wrapper {
     gap: 8px;
 }
 
+main .form form > .checkbox-wrapper,
+main .form form > .radio-wrapper {
+    margin: var(--form-field-gap);
+}
+
 main .form form fieldset > .radio-wrapper,
 main .form form fieldset > .checkbox-wrapper {
     margin-left: var(--form-field-gap);
@@ -307,11 +314,6 @@ main .form .radio-wrapper  label,
 main .form .checkbox-wrapper label {
     flex-basis: calc(100% - 26px);
     font-weight: 400;
-}
-
-main .form form > .checkbox-wrapper,
-main .form form > .radio-wrapper {
-    margin: var(--form-field-gap);
 }
 
 main .form fieldset.link .checkbox-wrapper label {
@@ -462,13 +464,13 @@ main .form button {
     transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
 }
 
+main form .file-wrapper > button{
+    display: flex;
+}
+
 main .form button:focus-visible {
     outline: none;
     box-shadow: var(--form-focus-ring);
-}
-
-main form .file-wrapper > button{
-    display: flex;
 }
 
 main .form button:hover {
@@ -479,8 +481,6 @@ main .submit-wrapper{
     width: var(--form-submit-width);
 }
 
-main .form textarea:disabled,
-main .form select:disabled,
 main .form button:disabled {
     background-color: var(--form-input-disable-color);
 }
@@ -570,14 +570,14 @@ main .form .button-wrapper button {
     cursor:pointer
 }
 
-main .form .button-wrapper button:hover {
-    background-color: var(--form-button-background-hover-color);
-}
-
 main .form .reset-wrapper button {
     color: var(--form-label-color);
     background-color: var(--background-color-primary);
     border-color: var(--border-color);
+}
+
+main .form .button-wrapper button:hover {
+    background-color: var(--form-button-background-hover-color);
 }
 
 main .form .reset-wrapper button:hover {

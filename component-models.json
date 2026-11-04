@@ -180,6 +180,26 @@
     ]
   },
   {
+    "id": "contact-form",
+    "fields": [
+      {
+        "component": "text",
+        "valueType": "string",
+        "name": "submitUrl",
+        "label": "Submit URL",
+        "description": "REST endpoint that receives submissions as JSON (POST). Leave empty until you have one.",
+        "value": ""
+      },
+      {
+        "component": "text",
+        "valueType": "string",
+        "name": "thankYouMessage",
+        "label": "Thank-you message",
+        "value": "Thank you! We'll get back to you within 2 business days."
+      }
+    ]
+  },
+  {
     "id": "embed-adaptive-form",
     "fields": [
       {

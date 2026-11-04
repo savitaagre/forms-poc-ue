@@ -1,0 +1,4 @@
+/* layout and field styles come from blocks/form/form.css, loaded by contact-form.js */
+main .contact-form {
+    min-height: 400px;
+}
