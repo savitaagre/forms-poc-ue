@@ -23,16 +23,9 @@
         {
           "component": "text",
           "valueType": "string",
-          "name": "submitUrl",
-          "label": "Submit URL",
-          "description": "Where submissions go: mailto:you@yourcompany.com opens the visitor's email app pre-filled; an https:// URL (e.g. a Formspree form) receives a JSON POST of the fields. Leave empty until you have one.",
-          "value": ""
-        },
-        {
-          "component": "text",
-          "valueType": "string",
           "name": "thankYouMessage",
           "label": "Thank-you message",
+          "description": "Shown after a visitor clicks Send Message. Answers are not sent or stored anywhere.",
           "value": "Thank you! We'll get back to you within 2 business days."
         }
       ]

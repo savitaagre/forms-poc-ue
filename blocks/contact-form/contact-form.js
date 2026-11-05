@@ -1,11 +1,9 @@
 import { loadCSS } from '../../scripts/aem.js';
 import { renderForm } from '../form/form.js';
-import { submitSuccess, submitFailure } from '../form/submit.js';
+import { submitSuccess } from '../form/submit.js';
 import { checkValidation } from '../form/util.js';
 
 const DEFAULT_THANK_YOU = 'Thank you! We\'ll get back to you within 2 business days.';
-const NOT_CONNECTED_MSG = 'This form is not connected yet. Please try again later.';
-const MAILTO_MSG = 'Your email app should now open with your message. Please press Send there to contact us.';
 
 function field(id, fieldType, label, extra = {}) {
   return {
@@ -40,121 +38,42 @@ const CONTACT_FIELDS = [
   field('consent', 'checkbox', 'I agree to be contacted about my enquiry', {
     required: true, enum: ['yes'], properties: { colspan: '12' },
   }),
-  field('reset', 'button', 'Clear', {
+  // button names must not be 'reset'/'submit': they would shadow form.reset()/form.submit()
+  field('clear', 'button', 'Clear', {
     buttonType: 'reset',
     properties: { 'fd:buttonType': 'reset', colspan: '6' },
     events: { click: ["dispatchEvent('reset')"] },
   }),
-  field('submit', 'button', 'Send Message', {
+  field('send', 'button', 'Send Message', {
     buttonType: 'submit', properties: { 'fd:buttonType': 'submit', colspan: '6' },
   }),
 ];
 
 /**
- * Reads the authored block config: row 1 = submit URL, row 2 = thank-you message.
- * In Universal Editor the rows carry data-aue-prop, which is used when present.
+ * Reads the authored thank-you message. In Universal Editor the cell carries
+ * data-aue-prop; otherwise it is the last row (older content also had a
+ * submit URL row before it, which is ignored).
  */
-function readConfig(block) {
-  const rows = [...block.children];
-  const config = {};
-  rows.forEach((row, i) => {
-    const cell = row.querySelector('[data-aue-prop]') || row.firstElementChild || row;
-    const prop = cell.dataset?.aueProp || (i === 0 ? 'submitUrl' : 'thankYouMessage');
-    const link = cell.querySelector('a[href]');
-    config[prop] = (prop === 'submitUrl' && link ? link.href : cell.textContent).trim();
-  });
-  // a single filled row may be the thank-you message when the URL is empty
-  if (rows.length === 1 && config.submitUrl && !/^(https?:\/\/|mailto:)/i.test(config.submitUrl)) {
-    config.thankYouMessage = config.submitUrl;
-    config.submitUrl = '';
-  }
-  return config;
+function readThankYouMessage(block) {
+  const authored = block.querySelector('[data-aue-prop="thankYouMessage"]');
+  const lastRow = block.lastElementChild;
+  return (authored || lastRow)?.textContent.trim() || '';
 }
 
-function toPayload(form) {
-  const data = {};
-  [...form.elements].forEach((el) => {
-    if (!el.name || el.matches('button') || el.disabled) return;
-    if (el.type === 'checkbox') {
-      data[el.name] = el.checked ? el.value : '';
-    } else {
-      data[el.name] = el.value;
-    }
-  });
-  // flat field map: what email form services and most APIs expect
-  return data;
-}
-
-/**
- * Builds a mailto: link with the visitor's answers, using field labels and
- * the selected option text, so it reads well in the recipient's inbox.
- */
-function toMailtoUrl(form, mailto) {
-  const [address] = mailto.replace(/^mailto:/i, '').split('?');
-  const lines = [];
-  let topic = '';
-  CONTACT_FIELDS.filter((fd) => fd.fieldType !== 'button').forEach((fd) => {
-    const el = form.elements[fd.name];
-    if (!el) return;
-    let value = el.value || '';
-    if (el.tagName === 'SELECT') value = el.selectedOptions[0]?.value ? el.selectedOptions[0].text : '';
-    if (el.type === 'checkbox') value = el.checked ? 'Yes' : 'No';
-    if (fd.name === 'subject') topic = value;
-    lines.push(fd.name === 'message' ? `\n${fd.label.value}:\n${value}` : `${fd.label.value}: ${value}`);
-  });
-  const subject = topic ? `Contact form: ${topic}` : 'Contact form';
-  return `mailto:${address}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
-}
-
-function showMailtoMessage(form) {
-  let note = form.parentNode.querySelector('.form-message.success-message');
-  if (!note) {
-    note = document.createElement('div');
-    note.className = 'form-message success-message';
-    form.parentNode.insertBefore(note, form);
-  }
-  note.textContent = MAILTO_MSG;
-  form.setAttribute('data-submitting', 'false');
-  form.querySelector('button[type="submit"]').disabled = false;
-}
-
-async function onSubmit(e, form, { submitUrl, thankYouMessage }) {
+function onSubmit(e, form, thankYouMessage) {
   e.preventDefault();
-  form.dataset.thankYouMsg = thankYouMessage || DEFAULT_THANK_YOU;
   if (!form.checkValidity()) {
     form.querySelectorAll('input, select, textarea').forEach((el) => checkValidation(el));
     return;
   }
-  if (!submitUrl) {
-    submitFailure(e, form);
-    form.querySelector('.form-message.error-message').textContent = NOT_CONNECTED_MSG;
-    return;
-  }
-  if (/^mailto:/i.test(submitUrl)) {
-    // keep the answers in the form in case no email app opens
-    form.querySelector('.form-message.error-message')?.remove();
-    window.open(toMailtoUrl(form, submitUrl), '_self');
-    showMailtoMessage(form);
-    return;
-  }
-  try {
-    const resp = await fetch(submitUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(toPayload(form)),
-    });
-    if (!resp.ok) throw new Error(`Submit failed: ${resp.status}`);
-    form.querySelector('.form-message.error-message')?.remove();
-    // clear through the reset button so the form model is reset too
-    form.querySelector('button[type="reset"]')?.click();
-    submitSuccess({ payload: {} }, form);
-  } catch (err) {
-    submitFailure(err, form);
-  }
+  // the answers are not sent anywhere: just thank the visitor and clear the form
+  form.dataset.thankYouMsg = thankYouMessage || DEFAULT_THANK_YOU;
+  form.querySelector('button[type="reset"]')?.click();
+  submitSuccess({ payload: {} }, form);
 }
 
 export default async function decorate(block) {
-  const config = readConfig(block);
+  const thankYouMessage = readThankYouMessage(block);
 
   // reuse the form block styling
   await loadCSS(`${window.hlx.codeBasePath}/blocks/form/form.css`);
@@ -183,5 +102,5 @@ export default async function decorate(block) {
     if (e.target.closest('.field-invalid') && e.target.validity?.valid) checkValidation(e.target);
   });
   // listen on the block: the form engine replaces the <form> element on reset
-  block.addEventListener('submit', (e) => onSubmit(e, e.target, config));
+  block.addEventListener('submit', (e) => onSubmit(e, e.target, thankYouMessage));
 }
