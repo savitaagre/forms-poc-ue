@@ -20,6 +20,20 @@ function field(id, fieldType, label, extra = {}) {
   };
 }
 
+function formButtons(sendLabel) {
+  return [
+    // button names must not be 'reset'/'submit': they would shadow form.reset()/form.submit()
+    field('clear', 'button', 'Clear', {
+      buttonType: 'reset',
+      properties: { 'fd:buttonType': 'reset', colspan: '6' },
+      events: { click: ["dispatchEvent('reset')"] },
+    }),
+    field('send', 'button', sendLabel, {
+      buttonType: 'submit', properties: { 'fd:buttonType': 'submit', colspan: '6' },
+    }),
+  ];
+}
+
 // Field definitions for the standard contact form, in Adaptive Form JSON format
 const CONTACT_FIELDS = [
   field('fullName', 'text-input', 'Full Name', {
@@ -67,32 +81,47 @@ const CONTACT_FIELDS = [
   field('consent', 'checkbox', 'I agree to be contacted about my enquiry', {
     required: true, enum: ['yes'], properties: { colspan: '12' },
   }),
-  // button names must not be 'reset'/'submit': they would shadow form.reset()/form.submit()
-  field('clear', 'button', 'Clear', {
-    buttonType: 'reset',
-    properties: { 'fd:buttonType': 'reset', colspan: '6' },
-    events: { click: ["dispatchEvent('reset')"] },
-  }),
-  field('send', 'button', 'Send Message', {
-    buttonType: 'submit', properties: { 'fd:buttonType': 'submit', colspan: '6' },
-  }),
+  ...formButtons('Send Message'),
 ];
+
+// migrated-contactUs: migrated from the Ingram Micro supply chain services page form
+const MIGRATED_CONTACT_US_FIELDS = [
+  field('company', 'text-input', 'Company Name', { required: true, properties: { colspan: '12' } }),
+  field('firstName', 'text-input', 'First name', { required: true, properties: { colspan: '6' } }),
+  field('lastName', 'text-input', 'Last name', { required: true, properties: { colspan: '6' } }),
+  field('email', 'email', 'Email address', { required: true, format: 'email', properties: { colspan: '6' } }),
+  field('phone', 'text-input', 'Business phone', { properties: { colspan: '6' } }),
+  field('howCanWeHelp', 'multiline-input', 'How can we help?', { required: true, properties: { colspan: '12' } }),
+  field('consent', 'checkbox', 'By providing my Personal Data, including name and contact information to Ingram Micro and its subsidiaries I agree to be contacted for marketing purposes. Ingram Micro will collect and process your Personal Data in compliance with our global privacy statement.', {
+    required: true, enum: ['yes'], properties: { colspan: '12' },
+  }),
+  ...formButtons('Submit'),
+];
+
+// Forms the block can show, chosen with the 'Form' setting in Universal Editor
+const FORMS = {
+  contact: { fields: CONTACT_FIELDS, title: 'Contact form' },
+  'migrated-contactUs': { fields: MIGRATED_CONTACT_US_FIELDS, title: 'migrated-contactUs' },
+};
 
 const EMAIL_RE = /^[^\s@/:]+@[^\s@/:]+\.[^\s@/:]+$/;
 
 /**
  * Reads the authored settings. In Universal Editor the cells carry data-aue-prop;
- * on the site each row is recognised by its content: an email address is the
- * recipient, other text is the thank-you message (URLs from older content are ignored).
+ * on the site each row is recognised by its content: a form key ('contact',
+ * 'migrated-contactUs') picks the form, an email address is the recipient, other text
+ * is the thank-you message (URLs from older content are ignored).
  */
 function readConfig(block) {
-  const config = { recipientEmail: '', thankYouMessage: '' };
+  const config = { formType: 'contact', recipientEmail: '', thankYouMessage: '' };
   [...block.children].forEach((row) => {
     const cell = row.querySelector('[data-aue-prop]') || row;
     const link = cell.querySelector('a[href^="mailto:"]');
     const text = (link ? link.getAttribute('href').replace(/^mailto:/i, '') : cell.textContent).trim();
     const prop = cell.dataset?.aueProp;
-    if (prop === 'recipientEmail' || (!prop && EMAIL_RE.test(text))) {
+    if (prop === 'formType' || (!prop && FORMS[text])) {
+      if (FORMS[text]) config.formType = text;
+    } else if (prop === 'recipientEmail' || (!prop && EMAIL_RE.test(text))) {
       config.recipientEmail = text;
     } else if ((prop === 'thankYouMessage' || !prop) && text && !/^https?:\/\//i.test(text)) {
       config.thankYouMessage = text;
@@ -105,10 +134,10 @@ function readConfig(block) {
  * Builds a mailto: link with the visitor's answers, using field labels and the
  * displayed option text, so it reads well in the recipient's inbox.
  */
-function toMailtoUrl(form, recipient) {
+function toMailtoUrl(form, recipient, { fields, title }) {
   const lines = [];
   let topic = '';
-  CONTACT_FIELDS.filter((fd) => fd.fieldType !== 'button').forEach((fd) => {
+  fields.filter((fd) => fd.fieldType !== 'button').forEach((fd) => {
     const wrapper = form.querySelector(`[data-id="${fd.id}"]`);
     if (!wrapper) return;
     let value;
@@ -127,20 +156,20 @@ function toMailtoUrl(form, recipient) {
       value = wrapper.querySelector('input, textarea')?.value || '';
     }
     if (fd.id === 'subject') topic = value;
-    lines.push(fd.id === 'message' ? `\n${fd.label.value}:\n${value}\n` : `${fd.label.value}: ${value}`);
+    lines.push(fd.fieldType === 'multiline-input' ? `\n${fd.label.value}:\n${value}\n` : `${fd.label.value}: ${value}`);
   });
-  const subject = topic ? `Contact form: ${topic}` : 'Contact form';
+  const subject = topic ? `${title}: ${topic}` : title;
   return `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
 }
 
-function onSubmit(e, form, { recipientEmail, thankYouMessage }) {
+function onSubmit(e, form, { formType, recipientEmail, thankYouMessage }) {
   e.preventDefault();
   if (!form.checkValidity()) {
     form.querySelectorAll('input, select, textarea').forEach((el) => checkValidation(el));
     return;
   }
   // open the visitor's email app with their answers, then thank them and clear the form
-  window.open(toMailtoUrl(form, recipientEmail || DEFAULT_RECIPIENT), '_self');
+  window.open(toMailtoUrl(form, recipientEmail || DEFAULT_RECIPIENT, FORMS[formType]), '_self');
   form.dataset.thankYouMsg = thankYouMessage || DEFAULT_THANK_YOU;
   form.querySelector('button[type="reset"]')?.click();
   submitSuccess({ payload: {} }, form);
@@ -156,14 +185,15 @@ export default async function decorate(block) {
   block.closest('.section')?.classList.add('form-container');
   block.replaceChildren();
 
+  const { fields, title } = FORMS[config.formType];
   const formDef = {
-    id: 'contact-form',
+    id: `${config.formType}-form`,
     fieldType: 'form',
-    title: 'Contact Us',
+    title,
     action: window.location.pathname,
     adaptiveform: '0.12.1',
     metadata: { version: '1.0.0', grammar: 'json-formula-1.0.0' },
-    items: CONTACT_FIELDS,
+    items: fields,
   };
   await renderForm(formDef, block);
   // keep submit clicks away from the form model, which would post to the page URL;

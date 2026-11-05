@@ -21,6 +21,18 @@
       "id": "contact-form",
       "fields": [
         {
+          "component": "select",
+          "valueType": "string",
+          "name": "formType",
+          "label": "Form",
+          "description": "Which form to show.",
+          "value": "contact",
+          "options": [
+            { "name": "Contact form", "value": "contact" },
+            { "name": "migrated-contactUs", "value": "migrated-contactUs" }
+          ]
+        },
+        {
           "component": "text",
           "valueType": "string",
           "name": "thankYouMessage",
