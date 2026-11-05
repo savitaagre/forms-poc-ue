@@ -187,8 +187,16 @@
         "valueType": "string",
         "name": "thankYouMessage",
         "label": "Thank-you message",
-        "description": "Shown after a visitor clicks Send Message. Answers are not sent or stored anywhere.",
+        "description": "Shown after a visitor clicks Send Message.",
         "value": "Thank you! We'll get back to you within 2 business days."
+      },
+      {
+        "component": "text",
+        "valueType": "string",
+        "name": "recipientEmail",
+        "label": "Send to email",
+        "description": "Send Message opens the visitor's email app with their answers, addressed to this email. Leave empty to use sagre@adobe.com.",
+        "value": "sagre@adobe.com"
       }
     ]
   },
