@@ -5,6 +5,13 @@ import { checkValidation } from '../form/util.js';
 
 const DEFAULT_THANK_YOU = 'Thank you! We\'ll get back to you within 2 business days.';
 
+const COUNTRIES = [
+  'Australia', 'Brazil', 'Canada', 'China', 'France', 'Germany', 'India', 'Ireland',
+  'Italy', 'Japan', 'Mexico', 'Netherlands', 'New Zealand', 'Singapore', 'South Africa',
+  'Spain', 'Sweden', 'Switzerland', 'United Arab Emirates', 'United Kingdom',
+  'United States', 'Other',
+];
+
 function field(id, fieldType, label, extra = {}) {
   return {
     id, fieldType, name: id, type: 'string', label: { value: label }, ...extra,
@@ -30,10 +37,30 @@ const CONTACT_FIELDS = [
     properties: { colspan: '6' },
   }),
   field('company', 'text-input', 'Company', {
-    placeholder: 'Company name (optional)', properties: { colspan: '12' },
+    placeholder: 'Company name (optional)', properties: { colspan: '6' },
+  }),
+  field('jobTitle', 'text-input', 'Job Title', {
+    maxLength: 100, placeholder: 'Your job title (optional)', properties: { colspan: '6' },
+  }),
+  field('country', 'drop-down', 'Country', {
+    placeholder: 'Select a country',
+    enum: COUNTRIES,
+    enumNames: COUNTRIES,
+    properties: { colspan: '6' },
+  }),
+  field('preferredContact', 'radio-group', 'Preferred Contact Method', {
+    enum: ['email', 'phone'],
+    enumNames: ['Email', 'Phone'],
+    properties: { colspan: '6', 'afs:layout': { orientation: 'horizontal' } },
   }),
   field('message', 'multiline-input', 'Message', {
     required: true, minLength: 10, maxLength: 1000, placeholder: 'How can we help?', properties: { colspan: '12' },
+  }),
+  field('attachment', 'file-input', 'Attachment', {
+    type: 'file',
+    accept: ['image/*', 'application/pdf'],
+    description: 'Optional: a screenshot or PDF.',
+    properties: { colspan: '12', dragDropText: 'Drag and drop a file here, or click to browse' },
   }),
   field('consent', 'checkbox', 'I agree to be contacted about my enquiry', {
     required: true, enum: ['yes'], properties: { colspan: '12' },
