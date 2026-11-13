@@ -1,9 +1,11 @@
 import { loadCSS } from '../../scripts/aem.js';
 import { renderForm } from '../form/form.js';
-import { submitFailure, submitSuccess } from '../form/submit.js';
+import { submitSuccess } from '../form/submit.js';
 import { checkValidation } from '../form/util.js';
 
 const DEFAULT_THANK_YOU = 'Thank you! We\'ll get back to you within 2 business days.';
+// used until a 'Send to email' address is set on the block in Universal Editor
+const DEFAULT_RECIPIENT = 'sagre@adobe.com';
 
 const COUNTRIES = [
   'Australia', 'Brazil', 'Canada', 'China', 'France', 'Germany', 'India', 'Ireland',
@@ -102,31 +104,26 @@ const FORMS = {
   'migrated-contactUs': { fields: MIGRATED_CONTACT_US_FIELDS, title: 'migrated-contactUs' },
 };
 
-// Google Apps Script web app that adds each submission as a row in a Google Sheet
-const SHEET_URL_RE = /^https:\/\/script\.google(usercontent)?\.com\//i;
-// short sheet column names for fields with long labels
-const COLUMN_NAMES = { consent: 'Consent' };
+const EMAIL_RE = /^[^\s@/:]+@[^\s@/:]+\.[^\s@/:]+$/;
 
 /**
  * Reads the authored settings. In Universal Editor the cells carry data-aue-prop;
  * on the site each row is recognised by its content: a form key ('contact',
- * 'migrated-contactUs') picks the form, a Google Apps Script URL is the spreadsheet,
- * other text is the thank-you message (email addresses and other URLs from older
- * content are ignored).
+ * 'migrated-contactUs') picks the form, an email address is the recipient, other text
+ * is the thank-you message (URLs from older content are ignored).
  */
 function readConfig(block) {
-  const config = { formType: 'contact', spreadsheetUrl: '', thankYouMessage: '' };
+  const config = { formType: 'contact', recipientEmail: '', thankYouMessage: '' };
   [...block.children].forEach((row) => {
     const cell = row.querySelector('[data-aue-prop]') || row;
-    const link = cell.querySelector('a[href]');
-    const text = (link ? link.getAttribute('href') : cell.textContent).trim();
+    const link = cell.querySelector('a[href^="mailto:"]');
+    const text = (link ? link.getAttribute('href').replace(/^mailto:/i, '') : cell.textContent).trim();
     const prop = cell.dataset?.aueProp;
     if (prop === 'formType' || (!prop && FORMS[text])) {
       if (FORMS[text]) config.formType = text;
-    } else if (prop === 'spreadsheetUrl' || (!prop && SHEET_URL_RE.test(text))) {
-      if (SHEET_URL_RE.test(text)) config.spreadsheetUrl = text;
-    } else if ((prop === 'thankYouMessage' || !prop) && text
-      && !/^(https?|mailto):/i.test(text) && !/^[^\s@]+@[^\s@]+$/.test(text)) {
+    } else if (prop === 'recipientEmail' || (!prop && EMAIL_RE.test(text))) {
+      config.recipientEmail = text;
+    } else if ((prop === 'thankYouMessage' || !prop) && text && !/^https?:\/\//i.test(text)) {
       config.thankYouMessage = text;
     }
   });
@@ -134,16 +131,17 @@ function readConfig(block) {
 }
 
 /**
- * Reads the visitor's answers as { label, value } pairs, using field labels and the
- * displayed option text, so the spreadsheet reads well.
+ * Builds a mailto: link with the visitor's answers, using field labels and the
+ * displayed option text, so it reads well in the recipient's inbox.
  */
-function readAnswers(form, fields) {
-  return fields.filter((fd) => fd.fieldType !== 'button').map((fd) => {
+function toMailtoUrl(form, recipient, { fields, title }) {
+  const lines = [];
+  let topic = '';
+  fields.filter((fd) => fd.fieldType !== 'button').forEach((fd) => {
     const wrapper = form.querySelector(`[data-id="${fd.id}"]`);
-    let value = '';
-    if (!wrapper) {
-      value = '';
-    } else if (fd.fieldType === 'drop-down') {
+    if (!wrapper) return;
+    let value;
+    if (fd.fieldType === 'drop-down') {
       const option = wrapper.querySelector('select')?.selectedOptions[0];
       value = option?.value ? option.text : '';
     } else if (fd.fieldType === 'checkbox') {
@@ -151,58 +149,27 @@ function readAnswers(form, fields) {
     } else if (fd.fieldType === 'radio-group') {
       value = wrapper.querySelector('input:checked')?.closest('.radio-wrapper')?.querySelector('label')?.textContent || '';
     } else if (fd.fieldType === 'file-input') {
-      // spreadsheets can't hold files: record the file names only
-      value = [...(wrapper.querySelector('input[type="file"]')?.files || [])].map((f) => f.name).join(', ');
+      // email links can't carry files: name them so the visitor attaches them
+      const names = [...(wrapper.querySelector('input[type="file"]')?.files || [])].map((f) => f.name);
+      value = names.length ? `${names.join(', ')} (please attach to this email)` : '';
     } else {
       value = wrapper.querySelector('input, textarea')?.value || '';
     }
-    return { label: COLUMN_NAMES[fd.id] || fd.label.value, value: value.trim() };
+    if (fd.id === 'subject') topic = value;
+    lines.push(fd.fieldType === 'multiline-input' ? `\n${fd.label.value}:\n${value}\n` : `${fd.label.value}: ${value}`);
   });
+  const subject = topic ? `${title}: ${topic}` : title;
+  return `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
 }
 
-async function saveToSheet(url, body) {
-  // text/plain keeps this a simple request, which Google Apps Script accepts cross-origin
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(body),
-  });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok || result.result !== 'success') {
-    throw new Error(result.error || `Spreadsheet responded with ${response.status}`);
-  }
-}
-
-async function onSubmit(e, form, { formType, spreadsheetUrl, thankYouMessage }) {
+function onSubmit(e, form, { formType, recipientEmail, thankYouMessage }) {
   e.preventDefault();
-  // the form engine's submit handler has already set data-submitting: track saving separately
-  if (form.dataset.saving === 'true') return;
   if (!form.checkValidity()) {
     form.querySelectorAll('input, select, textarea').forEach((el) => checkValidation(el));
     return;
   }
-  form.dataset.saving = 'true';
-  form.querySelector('button[type="submit"]').disabled = true;
-  form.querySelector('.form-message.error-message')?.remove();
-  try {
-    if (!spreadsheetUrl) throw new Error('No Spreadsheet URL is set on the Contact Form block');
-    const { title, fields } = FORMS[formType];
-    await saveToSheet(spreadsheetUrl, {
-      form: title,
-      page: window.location.href,
-      answers: readAnswers(form, fields),
-    });
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Contact form: could not save the submission', error);
-    submitFailure(error, form);
-    const message = form.querySelector('.form-message.error-message');
-    if (message) message.textContent = 'Sorry, we couldn\'t send your message. Please try again.';
-    return;
-  } finally {
-    delete form.dataset.saving;
-  }
-  // thank the visitor and clear the form
+  // open the visitor's email app with their answers, then thank them and clear the form
+  window.open(toMailtoUrl(form, recipientEmail || DEFAULT_RECIPIENT, FORMS[formType]), '_self');
   form.dataset.thankYouMsg = thankYouMessage || DEFAULT_THANK_YOU;
   form.querySelector('button[type="reset"]')?.click();
   submitSuccess({ payload: {} }, form);
