@@ -340,7 +340,7 @@ export function createRadioOrCheckboxUsingEnum(fd, wrapper) {
       enum: [value],
       required: fd.required,
     });
-    const { variant, 'afs:layout': layout } = fd.properties;
+    const { variant, 'afs:layout': layout } = fd.properties || {};
     if (variant === 'cards') {
       wrapper.classList.add(variant);
     } else {

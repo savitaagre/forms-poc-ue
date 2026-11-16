@@ -570,8 +570,25 @@ export async function renderForm(formDef, element) {
   return { form, afbForm };
 }
 
+// Document-based forms: a block row "Send to: name@example.com" makes Submit open the
+// visitor's email app with their answers, addressed to that email
+const SEND_TO_RE = /^send to\s*:\s*(?:mailto:)?([^\s@/:]+@[^\s@/:]+\.[^\s@/:]+)$/i;
+
+export function readSendTo(block) {
+  let sendTo = '';
+  [...block.children].forEach((row) => {
+    const match = row.textContent.trim().match(SEND_TO_RE);
+    if (match) {
+      [, sendTo] = match;
+      row.remove();
+    }
+  });
+  return sendTo;
+}
+
 export default async function decorate(block) {
-  let container = block.querySelector('a[href]');
+  const sendTo = readSendTo(block);
+  let container = block.querySelector('a[href]:not([href^="mailto:"])');
   let formDef;
   let pathname;
   if (container) {
@@ -589,6 +606,10 @@ export default async function decorate(block) {
       editMode: block.classList.contains('edit-mode'),
     }));
     container.replaceWith(form);
+    if (sendTo && form.dataset.source === 'sheet') {
+      block.dataset.sendTo = sendTo;
+      block.dataset.thankYouMsg = form.dataset.thankYouMsg || '';
+    }
   }
   return { form, afbForm };
 }

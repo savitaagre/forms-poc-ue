@@ -117,6 +117,57 @@ async function submitDocBasedForm(form, captcha) {
   }
 }
 
+function answerOf(wrapper) {
+  const select = wrapper.querySelector('select');
+  if (select) return [...select.selectedOptions].filter((o) => o.value).map((o) => o.text).join(', ');
+  const choices = wrapper.querySelectorAll(':scope .radio-wrapper input, :scope .checkbox-wrapper input');
+  if (choices.length) {
+    return [...choices].filter((c) => c.checked)
+      .map((c) => c.parentElement.querySelector('label')?.textContent.trim() || c.value).join(', ');
+  }
+  const input = wrapper.querySelector('input, textarea');
+  if (input?.type === 'checkbox') return input.checked ? 'Yes' : 'No';
+  if (input?.type === 'file') {
+    // email links can't carry files: name them so the visitor attaches them
+    const names = [...(input.files || [])].map((f) => f.name);
+    return names.length ? `${names.join(', ')} (please attach to this email)` : '';
+  }
+  return input?.value || '';
+}
+
+/**
+ * Builds a mailto: link with the visitor's answers (field labels and displayed option text),
+ * subject "<page title>: <subject field>" when the form has a field named "subject".
+ */
+export function buildMailtoUrl(form, sendTo) {
+  const lines = [];
+  const wrappers = new Set();
+  [...form.elements].forEach((fe) => {
+    if (!fe.name || fe.matches('button, fieldset') || fe.type === 'hidden') return;
+    const wrapper = fe.closest('.field-wrapper');
+    if (wrapper && !wrappers.has(wrapper)) wrappers.add(wrapper);
+  });
+  let topic = '';
+  wrappers.forEach((wrapper) => {
+    const label = wrapper.querySelector(':scope > .field-label')?.textContent.trim()
+      || wrapper.querySelector('[name]')?.name || '';
+    const value = answerOf(wrapper);
+    if (wrapper.querySelector('[name="subject"]')) topic = value;
+    lines.push(wrapper.querySelector('textarea') ? `\n${label}:\n${value}\n` : `${label}: ${value}`);
+  });
+  const title = document.title || 'Form submission';
+  const subject = topic ? `${title}: ${topic}` : title;
+  return `mailto:${sendTo}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
+}
+
+// open the visitor's email app with their answers, then thank them and clear the form
+function submitByEmail(form, holder) {
+  window.open(buildMailtoUrl(form, holder.dataset.sendTo), '_self');
+  // a reset replaces the form element, so the thank-you message is kept on the block
+  form.dataset.thankYouMsg = form.dataset.thankYouMsg || holder.dataset.thankYouMsg || '';
+  submitSuccess({ payload: {} }, form);
+}
+
 export async function handleSubmit(e, form, captcha) {
   e.preventDefault();
 
@@ -129,7 +180,10 @@ export async function handleSubmit(e, form, captcha) {
       // hide error message in case it was shown before
       form.querySelectorAll('.form-message.show').forEach((el) => el.classList.remove('show'));
 
-      if (form.dataset.source === 'sheet') {
+      const emailHolder = form.closest('[data-send-to]');
+      if (form.dataset.source === 'sheet' && emailHolder) {
+        submitByEmail(form, emailHolder);
+      } else if (form.dataset.source === 'sheet') {
         await submitDocBasedForm(form, captcha);
       }
     }
