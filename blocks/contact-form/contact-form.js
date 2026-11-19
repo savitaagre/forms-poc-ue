@@ -99,9 +99,10 @@ const MIGRATED_CONTACT_US_FIELDS = [
 ];
 
 // Forms the block can show, chosen with the 'Form' setting in Universal Editor
+// openEmail: whether Submit opens the visitor's email app before thanking them
 const FORMS = {
-  contact: { fields: CONTACT_FIELDS, title: 'Contact form' },
-  'migrated-contactUs': { fields: MIGRATED_CONTACT_US_FIELDS, title: 'migrated-contactUs' },
+  contact: { fields: CONTACT_FIELDS, title: 'Contact form', openEmail: true },
+  'migrated-contactUs': { fields: MIGRATED_CONTACT_US_FIELDS, title: 'migrated-contactUs', openEmail: false },
 };
 
 const EMAIL_RE = /^[^\s@/:]+@[^\s@/:]+\.[^\s@/:]+$/;
@@ -168,8 +169,11 @@ function onSubmit(e, form, { formType, recipientEmail, thankYouMessage }) {
     form.querySelectorAll('input, select, textarea').forEach((el) => checkValidation(el));
     return;
   }
-  // open the visitor's email app with their answers, then thank them and clear the form
-  window.open(toMailtoUrl(form, recipientEmail || DEFAULT_RECIPIENT, FORMS[formType]), '_self');
+  // open the visitor's email app with their answers (forms that ask for it),
+  // then thank them and clear the form
+  if (FORMS[formType].openEmail) {
+    window.open(toMailtoUrl(form, recipientEmail || DEFAULT_RECIPIENT, FORMS[formType]), '_self');
+  }
   form.dataset.thankYouMsg = thankYouMessage || DEFAULT_THANK_YOU;
   form.querySelector('button[type="reset"]')?.click();
   submitSuccess({ payload: {} }, form);

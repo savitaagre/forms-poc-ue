@@ -45,7 +45,7 @@
           "valueType": "string",
           "name": "recipientEmail",
           "label": "Send to email",
-          "description": "Send Message opens the visitor's email app with their answers, addressed to this email. Leave empty to use sagre@adobe.com.",
+          "description": "Contact form only: Send Message opens the visitor's email app with their answers, addressed to this email. Leave empty to use sagre@adobe.com. migrated-contactUs only shows the thank-you message.",
           "value": "sagre@adobe.com"
         }
       ]
